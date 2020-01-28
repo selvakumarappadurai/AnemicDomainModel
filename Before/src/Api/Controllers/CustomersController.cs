@@ -90,15 +90,11 @@ namespace Api.Controllers
                     return BadRequest("Email is already in use: " + item.Email);
                 }
 
-                var customer = new Customer
-                {
-                    Name = customerNameorError.Value,
-                    Email = emailorError.Value,
-                    MoneySpent = Dollars.Of(0),
-                    Status = CustomerStatus.Regular,
-                    StatusExpirationDate = null
-                };
-
+                var customer = new Customer(customerNameorError.Value, emailorError.Value); 
+                // This makes sure that we are not violating anything.
+                // like we can't create or instantiate this class without passing name and email, since it is 
+                // mandotory for creating user as per business. And also prevents for interchaning email and 
+                // name values. Since this is the only public construtor available to instantiate the class.
                 _customerRepository.Add(customer);
                 _customerRepository.SaveChanges();
 

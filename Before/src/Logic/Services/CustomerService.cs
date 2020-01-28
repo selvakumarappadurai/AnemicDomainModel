@@ -43,17 +43,25 @@ namespace Logic.Services
             ExpirationDate expirationDate = _movieService.GetExpirationDate(movie.LicensingModel);
             Dollars price = CalculatePrice(customer.Status, customer.StatusExpirationDate, movie.LicensingModel);
 
-            var purchasedMovie = new PurchasedMovie
-            {
-                MovieId = movie.Id,
-                CustomerId = customer.Id,
-                ExpirationDate = expirationDate,
-                Price = price,
-                PurchaseDate = DateTime.UtcNow
-            };
+            // There might be chance of creating another instance and add some other customer id if we have this 
+            // logic outside of the domain class. So moved the logic inside the domain class itself.
 
-            customer.PurchasedMovies.Add(purchasedMovie);
-            customer.MoneySpent += price;
+            //var purchasedMovie = new PurchasedMovie
+            //{
+            //    MovieId = movie.Id,
+            //    CustomerId = customer.Id,
+            //    ExpirationDate = expirationDate,
+            //    Price = price,
+            //    PurchaseDate = DateTime.UtcNow
+            //};
+
+            // moved the adding logic to Customer doamin class itself inorder to avoid mutation.
+            customer.AddPurchasedMovie(movie, expirationDate, price);
+
+            // There might be chance of missing this line after adding purchasing movie if we use this logic outside the domain class.
+            // So moved the logic inside the domain class itself.
+
+            //customer.MoneySpent += price;
         }
 
         public bool PromoteCustomer(Customer customer)

@@ -12,6 +12,10 @@ namespace Logic.Entities
 
         public decimal Value { get; }
 
+        // This is because we created a type as Dollars(value object) instead of using decimal. So that we can use this 
+        // property when we want to check for zero value without worrying about decmial conversion.
+        public bool IsZero => Value == 0;
+
         private Dollars(decimal value)
         {
             Value = value;

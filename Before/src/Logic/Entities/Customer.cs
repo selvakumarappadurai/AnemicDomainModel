@@ -22,24 +22,17 @@ namespace Logic.Entities
         public virtual Email Email
         {
             get => (Email)_email;
-            set => _email = value;
+            protected set => _email = value;
         }
-        public virtual CustomerStatus Status { get; set; }
 
-        // this private prop is to entity mappings. refer mapping folder class for reference.
-        private DateTime? _statusExpirationDate;
-        public virtual ExpirationDate StatusExpirationDate
-        {
-            get => (ExpirationDate)_statusExpirationDate;
-            set => _statusExpirationDate = value;
-        }
+        public virtual CustomerStatus Status { get; set; }
 
         // this private prop is to entity mappings. refer mapping folder class for reference.
         private decimal _moneySpent;
         public virtual Dollars MoneySpent
         {
             get => Dollars.Of(_moneySpent);
-            set => _moneySpent = value;
+            protected set => _moneySpent = value;
         }
 
         // this private prop is to entity mappings. refer mapping folder class for reference.
@@ -69,27 +62,50 @@ namespace Logic.Entities
             _email = email ?? throw new ArgumentException(nameof(email));
 
             MoneySpent = Dollars.Of(0);
-            Status = CustomerStatus.Regular;
-            StatusExpirationDate = null;
+            Status = CustomerStatus.Regular; // Moved staus assigning logic to object value class.
+            //StatusExpirationDate = null; // Moved expiration date logic to object value class.
         }
 
         public virtual void AddPurchasedMovie(Movie movie, ExpirationDate expirationDate, Dollars price)
         {
             // There might be chance of creating another instance and add some other customer id if we have this 
             // logic outside of the domain class. So keep this here.
-            var purchasedMovie = new PurchasedMovie
-            {
-                MovieId = movie.Id,
-                CustomerId = Id, // Note - Analyse this Id generation from general entity class.
-                ExpirationDate = expirationDate,
-                Price = price,
-                PurchaseDate = DateTime.UtcNow
-            };
+            //var purchasedMovie = new PurchasedMovie
+            //{
+            //    Movie = movie,
+            //    Customer = this, // Note - Analyse this Id generation from general entity class.
+            //    ExpirationDate = expirationDate,
+            //    Price = price,
+            //    PurchaseDate = DateTime.UtcNow
+            //};
+
+            // Furhter implenting DDD for purchased movie, drilled down to below line from above.
+            var purchasedMovie = new PurchasedMovie(movie, this, price, expirationDate);
 
             _purchasedMovies.Add(purchasedMovie);
             // There might be chance of missing this line after adding purchasing movie if we use this logic outside the domain class.
             // So keep the logics related to domain class inside the domain class itself.
             MoneySpent += price;
+        }
+
+        // virtual is for ORM.
+        public virtual bool Promote()
+        {
+            // at least 2 active movies during the last 30 days
+            if (PurchasedMovies.Count(x =>
+                x.ExpirationDate == ExpirationDate.Infinite || x.ExpirationDate.Date >= DateTime.UtcNow.AddDays(-30)) < 2)
+                return false;
+
+            // at least 100 dollars spent during the last year
+            if (PurchasedMovies.Where(x => x.PurchaseDate > DateTime.UtcNow.AddYears(-1)).Sum(x => x.Price) < 100m)
+                return false;
+
+            // Made this as separate method inside the object value itself as per DDD.
+            //customer.Status = CustomerStatus.Advanced;
+            //customer.StatusExpirationDate = (ExpirationDate)DateTime.UtcNow.AddYears(1);
+            
+            Status = Status.Promote();
+            return true;
         }
     }
 }

@@ -37,8 +37,8 @@ namespace Api.Controllers
                 Name = customer.Name.Value,
                 Email = customer.Email.Value,
                 MoneySpent = customer.MoneySpent,
-                Status = customer.Status.ToString(),
-                StatusExpirationDate = customer.StatusExpirationDate,
+                Status = customer.Status.Type.ToString(),
+                StatusExpirationDate = customer.Status.ExpirationDate,
                 PurchasedMovies = customer.PurchasedMovies.Select(x => new PurchasedMovieDto
                 {
                     Price = x.Price,
@@ -46,7 +46,7 @@ namespace Api.Controllers
                     PurchaseDate = x.PurchaseDate,
                     Movie = new MovieDto
                     {
-                        Id = x.MovieId,
+                        Id = x.Movie.Id,
                         Name = x.Movie.Name
                     }
                 }).ToList()
@@ -66,7 +66,7 @@ namespace Api.Controllers
                 Email = x.Email.Value,
                 MoneySpent = x.MoneySpent,
                 Status = x.Status.ToString(),
-                StatusExpirationDate = x.StatusExpirationDate
+                StatusExpirationDate = x.Status.ExpirationDate
             }).ToList();
             return Json(dtos);
         }
@@ -90,7 +90,7 @@ namespace Api.Controllers
                     return BadRequest("Email is already in use: " + item.Email);
                 }
 
-                var customer = new Customer(customerNameorError.Value, emailorError.Value); 
+                var customer = new Customer(customerNameorError.Value, emailorError.Value);
                 // This makes sure that we are not violating anything.
                 // like we can't create or instantiate this class without passing name and email, since it is 
                 // mandotory for creating user as per business. And also prevents for interchaning email and 
@@ -153,7 +153,7 @@ namespace Api.Controllers
                     return BadRequest("Invalid customer id: " + id);
                 }
 
-                if (customer.PurchasedMovies.Any(x => x.MovieId == movie.Id && !x.ExpirationDate.IsExpired))
+                if (customer.PurchasedMovies.Any(x => x.Movie.Id == movie.Id && !x.ExpirationDate.IsExpired))
                 {
                     return BadRequest("The movie is already purchased: " + movie.Name);
                 }
@@ -182,12 +182,14 @@ namespace Api.Controllers
                     return BadRequest("Invalid customer id: " + id);
                 }
 
-                if (customer.Status == CustomerStatus.Advanced && !customer.StatusExpirationDate.IsExpired)
+                if (customer.Status.IsAdvanced)
                 {
                     return BadRequest("The customer already has the Advanced status");
                 }
 
-                bool success = _customerService.PromoteCustomer(customer);
+                //bool success = _customerService.PromoteCustomer(customer);
+                bool success = customer.Promote();
+
                 if (!success)
                 {
                     return BadRequest("Cannot promote the customer");

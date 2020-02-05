@@ -5,18 +5,20 @@ using Logic.Dtos;
 using Logic.Entities;
 using Logic.Repositories;
 using Logic.Services;
+using Logic.Utils;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
     [Route("api/[controller]")]
-    public class CustomersController : Controller
+    public class CustomersController : BaseController
     {
         private readonly MovieRepository _movieRepository;
         private readonly CustomerRepository _customerRepository;
         //private readonly CustomerService _customerService;
 
-        public CustomersController(MovieRepository movieRepository, CustomerRepository customerRepository)
+        public CustomersController(UnitOfWork unitOfWork, MovieRepository movieRepository, CustomerRepository customerRepository)
+            : base(unitOfWork)
         {
             _customerRepository = customerRepository;
             _movieRepository = movieRepository;
@@ -52,11 +54,11 @@ namespace Api.Controllers
                 }).ToList()
             };
 
-            return Json(dto);
+            return Ok(dto);
         }
 
         [HttpGet]
-        public JsonResult GetList()
+        public IActionResult GetList()
         {
             IReadOnlyList<Customer> customers = _customerRepository.GetList();
             var dtos = customers.Select(x => new CustomerInListDto
@@ -68,143 +70,131 @@ namespace Api.Controllers
                 Status = x.Status.ToString(),
                 StatusExpirationDate = x.Status.ExpirationDate
             }).ToList();
-            return Json(dtos);
+            return Ok(dtos);
         }
 
         [HttpPost]
         public IActionResult Create([FromBody] CreateCustomerDto item)
         {
-            try
-            {
-                Result<CustomerName> customerNameorError = CustomerName.Create(item.Name);
-                Result<Email> emailorError = Email.Create(item.Email);
+            // We don't need try catch statements since we have generic exception handler class
+            //try
+            //{
+            Result<CustomerName> customerNameorError = CustomerName.Create(item.Name);
+            Result<Email> emailorError = Email.Create(item.Email);
 
-                Result result = Result.Combine(customerNameorError, emailorError);
-                if (result.IsFailure)
-                {
-                    return BadRequest(result.Error);
-                }
+            Result result = Result.Combine(customerNameorError, emailorError);
+            if (result.IsFailure)
+                return Error(result.Error);
 
-                if (_customerRepository.GetByEmail(emailorError.Value) != null)
-                {
-                    return BadRequest("Email is already in use: " + item.Email);
-                }
+            if (_customerRepository.GetByEmail(emailorError.Value) != null)
+                return Error("Email is already in use: " + item.Email);
 
-                var customer = new Customer(customerNameorError.Value, emailorError.Value);
-                // This makes sure that we are not violating anything.
-                // like we can't create or instantiate this class without passing name and email, since it is 
-                // mandotory for creating user as per business. And also prevents for interchaning email and 
-                // name values. Since this is the only public construtor available to instantiate the class.
-                _customerRepository.Add(customer);
-                _customerRepository.SaveChanges();
+            var customer = new Customer(customerNameorError.Value, emailorError.Value);
+            // This makes sure that we are not violating anything.
+            // like we can't create or instantiate this class without passing name and email, since it is 
+            // mandotory for creating user as per business. And also prevents for interchaning email and 
+            // name values. Since this is the only public construtor available to instantiate the class.
+            _customerRepository.Add(customer);
+            //_customerRepository.SaveChanges();
 
-                return Ok();
-            }
-            catch (Exception e)
-            {
-                return StatusCode(500, new { error = e.Message });
-            }
+            return Ok();
+            //}
+            //catch (Exception e)
+            //{
+            //    return StatusCode(500, new { error = e.Message });
+            //}
         }
 
         [HttpPut]
         [Route("{id}")]
         public IActionResult Update(long id, [FromBody] UpdateCustomerDto item)
         {
-            try
-            {
-                Result<CustomerName> customerNameorError = CustomerName.Create(item.Name);
-                if (customerNameorError.IsFailure)
-                {
-                    return BadRequest(customerNameorError.Error);
-                }
+            // We don't need try catch statements since we have generic exception handler class
+            //try
+            //{
+            Result<CustomerName> customerNameorError = CustomerName.Create(item.Name);
+            if (customerNameorError.IsFailure)
+                return Error(customerNameorError.Error);
 
-                Customer customer = _customerRepository.GetById(id);
-                if (customer == null)
-                {
-                    return BadRequest("Invalid customer id: " + id);
-                }
+            Customer customer = _customerRepository.GetById(id);
+            if (customer == null)
+                return Error("Invalid customer id: " + id);
 
-                customer.Name = customerNameorError.Value;
-                _customerRepository.SaveChanges();
+            customer.Name = customerNameorError.Value;
+            //_customerRepository.SaveChanges();
 
-                return Ok();
-            }
-            catch (Exception e)
-            {
-                return StatusCode(500, new { error = e.Message });
-            }
+            return Ok();
+            //}
+            //catch (Exception e)
+            //{
+            //    return StatusCode(500, new { error = e.Message });
+            //}
         }
 
         [HttpPost]
         [Route("{id}/movies")]
         public IActionResult PurchaseMovie(long id, [FromBody] long movieId)
         {
-            try
-            {
-                Movie movie = _movieRepository.GetById(movieId);
-                if (movie == null)
-                {
-                    return BadRequest("Invalid movie id: " + movieId);
-                }
+            // We don't need try catch statements since we have generic exception handler class
+            //try
+            //{
+            Movie movie = _movieRepository.GetById(movieId);
+            if (movie == null)
+                return Error("Invalid movie id: " + movieId);
 
-                Customer customer = _customerRepository.GetById(id);
-                if (customer == null)
-                {
-                    return BadRequest("Invalid customer id: " + id);
-                }
+            Customer customer = _customerRepository.GetById(id);
+            if (customer == null)
+                return Error("Invalid customer id: " + id);
 
-                if (customer.PurchasedMovies.Any(x => x.Movie.Id == movie.Id && !x.ExpirationDate.IsExpired))
-                {
-                    return BadRequest("The movie is already purchased: " + movie.Name);
-                }
+            if (customer.HasPurchasedMovie(movie))
+                return Error("The movie is already purchased: " + movie.Name);
 
-                // Since we moved all the business logics to the respective entity we don't have service dependency anymore.
-                //_customerService.PurchaseMovie(customer, movie);
-                customer.PurchaseMovie(movie);
+            // Since we moved all the business logics to the respective entity we don't have service dependency anymore.
+            //_customerService.PurchaseMovie(customer, movie);
+            customer.PurchaseMovie(movie);
 
-                _customerRepository.SaveChanges();
+            //_customerRepository.SaveChanges();
 
-                return Ok();
-            }
-            catch (Exception e)
-            {
-                return StatusCode(500, new { error = e.Message });
-            }
+            return Ok();
+            //}
+            //catch (Exception e)
+            //{
+            //    return StatusCode(500, new { error = e.Message });
+            //}
         }
 
         [HttpPost]
         [Route("{id}/promotion")]
         public IActionResult PromoteCustomer(long id)
         {
-            try
-            {
-                Customer customer = _customerRepository.GetById(id);
-                if (customer == null)
-                {
-                    return BadRequest("Invalid customer id: " + id);
-                }
+            // We don't need try catch statements since we have generic exception handler class
+            //try
+            //{
+            Customer customer = _customerRepository.GetById(id);
+            if (customer == null)
+                return Error("Invalid customer id: " + id);
 
-                if (customer.Status.IsAdvanced)
-                {
-                    return BadRequest("The customer already has the Advanced status");
-                }
+            //bool success = _customerService.PromoteCustomer(customer);
 
-                //bool success = _customerService.PromoteCustomer(customer);
-                bool success = customer.Promote();
+            Result promotionCheck = customer.CanPromote();
+            if (promotionCheck.IsFailure)
+                return Error(promotionCheck.Error);
 
-                if (!success)
-                {
-                    return BadRequest("Cannot promote the customer");
-                }
+            //Result result = customer.Promote();
 
-                _customerRepository.SaveChanges();
+            //if (result.IsFailure)
+            //    return Error(result.Error);
 
-                return Ok();
-            }
-            catch (Exception e)
-            {
-                return StatusCode(500, new { error = e.Message });
-            }
+            customer.Promote();
+
+            //_customerRepository.SaveChanges();
+
+            return Ok();
+            //}
+            //catch (Exception e)
+            //{
+            //    return StatusCode(500, new { error = e.Message });
+            //}
         }
     }
 }

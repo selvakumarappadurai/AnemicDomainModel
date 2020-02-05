@@ -29,12 +29,15 @@ namespace Api
             //services.AddTransient<CustomerService>();
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app)
         {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
+            app.UseMiddleware<ExceptionHandler>();
+
+            // We can get rid of showing developer exception page. Since we wrote an genric exception handler.(above line)
+            //if (env.IsDevelopment())
+            //{
+            //    app.UseDeveloperExceptionPage();
+            //}
 
             app.UseMvc();
         }

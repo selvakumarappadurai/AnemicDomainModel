@@ -72,9 +72,18 @@ namespace Logic.Entities
             //StatusExpirationDate = null; // Moved expiration date logic to object value class.
         }
 
+        public virtual bool HasPurchasedMovie(Movie movie)
+        {
+            return PurchasedMovies.Any(x => x.Movie == movie && !x.ExpirationDate.IsExpired);
+        }
+
         // Changed the method name from addpurchasedmovie to purchase movie as per ebiquity language.
         public virtual void PurchaseMovie(Movie movie)
         {
+
+            if (HasPurchasedMovie(movie))
+                throw new Exception();
+
             // There might be chance of creating another instance and add some other customer id if we have this 
             // logic outside of the domain class. So keep this here.
             //var purchasedMovie = new PurchasedMovie
@@ -98,24 +107,31 @@ namespace Logic.Entities
             MoneySpent += price;
         }
 
-        // virtual is for ORM.
-        public virtual bool Promote()
+        //Command-query separation principle (CQS) - States that a method should either return value or mutate somthing but not both.
+
+        // Create this method as to adhere with CQS principle
+        public virtual Result CanPromote()
         {
-            // at least 2 active movies during the last 30 days
+            if (Status.IsAdvanced)
+                return Result.Fail("The customer already has the advanced status");
+
             if (PurchasedMovies.Count(x =>
-                x.ExpirationDate == ExpirationDate.Infinite || x.ExpirationDate.Date >= DateTime.UtcNow.AddDays(-30)) < 2)
-                return false;
+            x.ExpirationDate == ExpirationDate.Infinite || x.ExpirationDate.Date >= DateTime.UtcNow.AddDays(-30)) < 2)
+                return Result.Fail("The customer has to have at least 2 active movies during the last 30 days");
 
-            // at least 100 dollars spent during the last year
             if (PurchasedMovies.Where(x => x.PurchaseDate > DateTime.UtcNow.AddYears(-1)).Sum(x => x.Price) < 100m)
-                return false;
+                return Result.Fail("The customer has to have at least 100 dollars spent during the last year");
 
-            // Made this as separate method inside the object value itself as per DDD.
-            //customer.Status = CustomerStatus.Advanced;
-            //customer.StatusExpirationDate = (ExpirationDate)DateTime.UtcNow.AddYears(1);
+            return Result.Ok();
+        }
+
+        // virtual is for ORM.
+        public virtual void Promote()
+        {
+            if (CanPromote().IsFailure)
+                throw new Exception();
 
             Status = Status.Promote();
-            return true;
         }
     }
 }

@@ -45,9 +45,10 @@ namespace Logic.Services
         public void PurchaseMovie(Customer customer, Movie movie)
         {
             //ExpirationDate expirationDate = _movieService.GetExpirationDate(movie.LicensingModel);
-            ExpirationDate expirationDate = movie.GetExpirationDate();
             //Dollars price = CalculatePrice(customer.Status, movie.LicensingModel);
-            Dollars price = movie.CalculatePrice(customer.Status);
+            
+            //ExpirationDate expirationDate = movie.GetExpirationDate();
+            //Dollars price = movie.CalculatePrice(customer.Status);
 
             // There might be chance of creating another instance and add some other customer id if we have this 
             // logic outside of the domain class. So moved the logic inside the domain class itself.
@@ -62,7 +63,7 @@ namespace Logic.Services
             //};
 
             // moved the adding logic to Customer doamin class itself in order to avoid mutation.
-            customer.AddPurchasedMovie(movie, expirationDate, price);
+            //customer.AddPurchasedMovie(movie);
 
             // There might be chance of missing this line after adding purchasing movie if we use this logic outside the domain class.
             // So moved the logic inside the domain class itself.

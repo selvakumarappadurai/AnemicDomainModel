@@ -18,14 +18,20 @@ namespace Logic.Entities
         }
 
         // this private prop is to entity mappings. refer mapping folder class for reference.
-        private string _email;
-        public virtual Email Email
-        {
-            get => (Email)_email;
-            protected set => _email = value;
-        }
+        //private string _email;
+        //public virtual Email Email
+        //{
+        //    get => (Email)_email;
+        //    protected set => _email = value;
+        //}
 
-        public virtual CustomerStatus Status { get; set; }
+        // Since we are not going to change the email once created we can make that as getter alone and backend property as readonly.
+        // Note : We will be setting the email while creation via outfacing contract model.
+        private readonly string _email;
+        public virtual Email Email => (Email)_email;
+
+
+        public virtual CustomerStatus Status { get; protected set; }
 
         // this private prop is to entity mappings. refer mapping folder class for reference.
         private decimal _moneySpent;
@@ -66,7 +72,8 @@ namespace Logic.Entities
             //StatusExpirationDate = null; // Moved expiration date logic to object value class.
         }
 
-        public virtual void AddPurchasedMovie(Movie movie, ExpirationDate expirationDate, Dollars price)
+        // Changed the method name from addpurchasedmovie to purchase movie as per ebiquity language.
+        public virtual void PurchaseMovie(Movie movie)
         {
             // There might be chance of creating another instance and add some other customer id if we have this 
             // logic outside of the domain class. So keep this here.
@@ -79,7 +86,10 @@ namespace Logic.Entities
             //    PurchaseDate = DateTime.UtcNow
             //};
 
-            // Furhter implenting DDD for purchased movie, drilled down to below line from above.
+            ExpirationDate expirationDate = movie.GetExpirationDate();
+            Dollars price = movie.CalculatePrice(Status);
+
+            // Further implenting DDD for purchased movie, drilled down to below line from above.
             var purchasedMovie = new PurchasedMovie(movie, this, price, expirationDate);
 
             _purchasedMovies.Add(purchasedMovie);
@@ -103,7 +113,7 @@ namespace Logic.Entities
             // Made this as separate method inside the object value itself as per DDD.
             //customer.Status = CustomerStatus.Advanced;
             //customer.StatusExpirationDate = (ExpirationDate)DateTime.UtcNow.AddYears(1);
-            
+
             Status = Status.Promote();
             return true;
         }

@@ -45,6 +45,8 @@ namespace Logic.Entities
             return Type.GetHashCode() ^ ExpirationDate.GetHashCode(); // ^ ==> combines the two hashcode values.
         }
 
+        public decimal GetDiscount() => IsAdvanced ? 0.23m : 0m;
+
         public CustomerStatus Promote()
         {
             return new CustomerStatus(CustomerStatusType.Advanced, (ExpirationDate)DateTime.UtcNow.AddYears(1));

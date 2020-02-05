@@ -14,13 +14,13 @@ namespace Api.Controllers
     {
         private readonly MovieRepository _movieRepository;
         private readonly CustomerRepository _customerRepository;
-        private readonly CustomerService _customerService;
+        //private readonly CustomerService _customerService;
 
-        public CustomersController(MovieRepository movieRepository, CustomerRepository customerRepository, CustomerService customerService)
+        public CustomersController(MovieRepository movieRepository, CustomerRepository customerRepository)
         {
             _customerRepository = customerRepository;
             _movieRepository = movieRepository;
-            _customerService = customerService;
+            //_customerService = customerService;
         }
 
         [HttpGet]
@@ -158,7 +158,9 @@ namespace Api.Controllers
                     return BadRequest("The movie is already purchased: " + movie.Name);
                 }
 
-                _customerService.PurchaseMovie(customer, movie);
+                // Since we moved all the business logics to the respective entity we don't have service dependency anymore.
+                //_customerService.PurchaseMovie(customer, movie);
+                customer.PurchaseMovie(movie);
 
                 _customerRepository.SaveChanges();
 
